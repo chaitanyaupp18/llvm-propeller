@@ -71,3 +71,17 @@ bazel test //propeller/...:all
 Propeller generates compiler profiles (`cc_profile.txt`) and linker profiles
 (`ld_profile.txt`). The compiler profile is used by LLVM to guide optimizations
 and is described in [Propeller Profile Format](propeller_profile_format.md).
+
+### Generating a Tail-Call Deduplication Profile (DeduBB)
+This fork of Propeller adds support for cross-module basic block deduplication (DeduBB). To generate a deduplication profile, run Propeller against a binary compiled with `-fbasic-block-address-map`:
+
+```bash
+./generate_propeller_profiles \
+    --binary=/path/to/binary_with_bbaddrmap \
+    --tail_call_profile=dedubb_directives.txt
+```
+
+You can then pass these directives to the LLVM CodeGen backend to fold identical blocks across translation units:
+```bash
+clang++ -O2 -fbasic-block-address-map -mllvm -dedubb-directives=dedubb_directives.txt ...
+```
