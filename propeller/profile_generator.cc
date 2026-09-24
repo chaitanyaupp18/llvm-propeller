@@ -45,6 +45,7 @@
 #include "propeller/propeller_options.pb.h"
 #include "propeller/proto_branch_frequencies_aggregator.h"
 #include "propeller/status_macros.h"  // Included for macros.
+#include "propeller/tail_call_profile_writer.h"
 
 namespace propeller {
 namespace {
@@ -167,6 +168,9 @@ absl::Status GeneratePropellerProfiles(
 
   RETURN_IF_ERROR(PropellerProfileWriter(opts).Write(profile));
   LOG(INFO) << profile.stats.DebugString();
+
+  // Also emit DeduBB tail-call deduplication directives when requested.
+  RETURN_IF_ERROR(WriteTailCallDedupProfile(opts));
 
   return absl::OkStatus();
 }

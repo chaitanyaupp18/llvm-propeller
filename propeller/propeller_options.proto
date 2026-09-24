@@ -33,7 +33,7 @@ message InputProfile {
   ProfileType type = 2;
 }
 
-// Next Available: 19.
+// Next Available: 21.
 message PropellerOptions {
   // binary file name.
   string binary_name = 1;
@@ -92,6 +92,21 @@ message PropellerOptions {
 
   // Write the basic block hash in the cluster file.
   bool write_bb_hash = 18 [default = false];
+
+  // Output file for DeduBB tail-call deduplication directives (the `m`/`f`/
+  // `bbm`/`bbf` directive file). When set, Propeller scans the binary for
+  // byte-identical basic blocks that end in a tail call or return and emits the
+  // directives consumed by the LLVM CodeGen DeduBB pass. Empty disables it.
+  string tail_call_profile_out_name = 19;
+
+  // When true, restrict tail-call deduplication to cold basic blocks (those with
+  // a zero post-link frequency), preserving hot-path performance as in the
+  // DeduBB paper. Requires a profile to be useful; with no profile every block
+  // is considered cold. Defaults to false (deduplicate all tail/return blocks).
+  bool tail_call_dedup_cold_only = 20 [default = false];
+
+  // When true, restrict tail-call deduplication to blocks within the same module.
+  bool tail_call_dedup_intra_module_only = 21 [default = false];
 }
 
 // Next Available: 15.

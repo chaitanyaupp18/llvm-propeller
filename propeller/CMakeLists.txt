@@ -54,6 +54,8 @@ add_library(propeller_lib OBJECT
   proto_branch_frequencies_aggregator.cc
   resolve_mmap_name.cc
   spe_tid_pid_provider.cc
+  tail_call_dedupper.cc
+  tail_call_profile_writer.cc
   # keep-sorted end
 )
 target_link_libraries(propeller_lib
@@ -124,6 +126,7 @@ propeller_generate_tests(
     spe_tid_pid_provider_test.cc
     status_macros_test.cc
     status_testing_macros_test.cc
+    tail_call_dedupper_test.cc
     # keep-sorted end
   DEPS
     # keep-sorted start

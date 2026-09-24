@@ -992,6 +992,41 @@ cc_library(
 )
 
 cc_library(
+    name = "tail_call_dedupper",
+    srcs = ["tail_call_dedupper.cc"],
+    hdrs = ["tail_call_dedupper.h"],
+)
+
+cc_test(
+    name = "tail_call_dedupper_test",
+    srcs = ["tail_call_dedupper_test.cc"],
+    deps = [
+        ":tail_call_dedupper",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "tail_call_profile_writer",
+    srcs = ["tail_call_profile_writer.cc"],
+    hdrs = ["tail_call_profile_writer.h"],
+    deps = [
+        ":bb_addr_map",
+        ":bb_addr_map_cc_proto",
+        ":binary_content",
+        ":propeller_options_cc_proto",
+        ":status_macros",
+        ":tail_call_dedupper",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings:str_format",
+        "@llvm-project//llvm:Object",
+        "@llvm-project//llvm:TargetParser",
+    ],
+)
+
+cc_library(
     name = "profile_generator",
     srcs = ["profile_generator.cc"],
     hdrs = ["profile_generator.h"],
@@ -1013,6 +1048,7 @@ cc_library(
         ":propeller_options_cc_proto",
         ":proto_branch_frequencies_aggregator",
         ":status_macros",
+        ":tail_call_profile_writer",
         "@abseil-cpp//absl/algorithm:container",
         "@abseil-cpp//absl/container:flat_hash_set",
         "@abseil-cpp//absl/log",
@@ -1042,6 +1078,7 @@ cc_binary(
     deps = [
         ":profile_generator",
         ":propeller_options_cc_proto",
+        ":tail_call_profile_writer",
         ":text_proto_flag",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/flags:flag",

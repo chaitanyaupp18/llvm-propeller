@@ -42,6 +42,7 @@
 #include "absl/strings/string_view.h"
 #include "propeller/profile_generator.h"
 #include "propeller/propeller_options.pb.h"
+#include "propeller/tail_call_profile_writer.h"
 #include "propeller/text_proto_flag.h"
 
 namespace {
@@ -65,6 +66,16 @@ ABSL_FLAG(ProfileType, profile_type, ProfileType::kPerfLbr,
           "\"PERF_SPE\", \"FREQUENCIES_PROTO\").");
 ABSL_FLAG(std::string, cc_profile, "", "Output cc profile");
 ABSL_FLAG(std::string, ld_profile, "", "Output ld profile");
+ABSL_FLAG(std::string, tail_call_profile, "",
+          "Output DeduBB tail-call deduplication directive file (the "
+          "`m`/`f`/`bbm`/`bbf` directives). Scans the binary for byte-identical "
+          "basic blocks ending in a tail call or return. Does not require a "
+          "perf profile.");
+ABSL_FLAG(bool, tail_call_dedup_cold_only, false,
+          "Restrict tail-call deduplication to cold basic blocks (zero "
+          "post-link frequency) to preserve hot-path performance.");
+ABSL_FLAG(bool, tail_call_dedup_intra_module_only, false,
+          "Restrict tail-call deduplication to blocks within the same module.");
 ABSL_FLAG(propeller::TextProtoFlag<propeller::PropellerOptions>,
           propeller_options, {},
           "Override for propeller options (debug only).");
@@ -122,12 +133,26 @@ int main(int argc, char* argv[]) {
   options.set_binary_name(absl::GetFlag(FLAGS_binary));
   options.set_cluster_out_name(absl::GetFlag(FLAGS_cc_profile));
   options.set_symbol_order_out_name(absl::GetFlag(FLAGS_ld_profile));
+  options.set_tail_call_profile_out_name(absl::GetFlag(FLAGS_tail_call_profile));
+  options.set_tail_call_dedup_cold_only(
+      absl::GetFlag(FLAGS_tail_call_dedup_cold_only));
+  options.set_tail_call_dedup_intra_module_only(
+      absl::GetFlag(FLAGS_tail_call_dedup_intra_module_only));
 
   for (const std::string& profile : absl::GetFlag(FLAGS_profile)) {
     InputProfile* input_profile = options.add_input_profiles();
     input_profile->set_name(profile);
     input_profile->set_type(
         ToProtoProfileType(absl::GetFlag(FLAGS_profile_type)));
+  }
+
+  // Tail-call deduplication is a static analysis of the binary and needs no
+  // perf profile. When the user only asks for the DeduBB directive file (no
+  // input profiles), emit it directly without running the profile pipeline.
+  if (!options.tail_call_profile_out_name().empty() &&
+      options.input_profiles().empty()) {
+    QCHECK_OK(propeller::WriteTailCallDedupProfile(options));
+    return 0;
   }
 
   QCHECK_OK(GeneratePropellerProfiles(options));
