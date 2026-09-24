@@ -85,3 +85,10 @@ You can then pass these directives to the LLVM CodeGen backend to fold identical
 ```bash
 clang++ -O2 -fbasic-block-address-map -mllvm -dedubb-directives=dedubb_directives.txt ...
 ```
+
+If you are compiling with ThinLTO (`-flto=thin`), you must explicitly instruct the ThinLTO linker backend to retain the address map using `-Wl,--lto-basic-block-address-map`:
+```bash
+clang++ -O2 -flto=thin -fuse-ld=lld \
+    -Wl,--lto-basic-block-address-map \
+    -Wl,-mllvm,-dedubb-directives=dedubb_directives.txt ...
+```
