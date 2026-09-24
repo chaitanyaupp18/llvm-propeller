@@ -31,7 +31,7 @@ date > ${PATH_TO_ALL_RESULTS}/script_start_time.txt
 # 1. Build Trunk LLVM
 mkdir -p ${PATH_TO_LLVM_SOURCES} && cd ${PATH_TO_LLVM_SOURCES}
 git clone https://github.com/llvm/llvm-project.git
-cd ${PATH_TO_LLVM_SOURCES}/llvm-project && git reset --hard acbd822
+cd ${PATH_TO_LLVM_SOURCES}/llvm-project && git reset --hard 333edde4e80e02d6fe5e866abf317969b66c0b8e
 mkdir -p ${PATH_TO_TRUNK_LLVM_BUILD} && cd ${PATH_TO_TRUNK_LLVM_BUILD}
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_USE_LINKER=lld -DCMAKE_INSTALL_PREFIX="${PATH_TO_TRUNK_LLVM_INSTALL}" -DLLVM_ENABLE_RTTI=On -DLLVM_INCLUDE_TESTS=Off ${PATH_TO_LLVM_SOURCES}/llvm-project/llvm
 ninja install
@@ -72,9 +72,12 @@ PATH_TO_GENERATE_PROFILES=${CWD}/../../build/propeller/generate_propeller_profil
 OPTIMIZED_DEDUBB_CC_LD_CMAKE_FLAGS=(
   "-DCMAKE_C_FLAGS=-funique-internal-linkage-names -fbasic-block-address-map"
   "-DCMAKE_CXX_FLAGS=-funique-internal-linkage-names -fbasic-block-address-map"
-  "-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -Wl,--lto-basic-block-address-map -Wl,-mllvm,-dedubb-directives=${PATH_TO_PROFILES}/dedubb_directives.txt"
-  "-DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld -Wl,--lto-basic-block-address-map -Wl,-mllvm,-dedubb-directives=${PATH_TO_PROFILES}/dedubb_directives.txt"
-  "-DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=lld -Wl,--lto-basic-block-address-map -Wl,-mllvm,-dedubb-directives=${PATH_TO_PROFILES}/dedubb_directives.txt" )
+  "-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -Wl,--lto-basic-block-address-map"
+  "-DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld -Wl,--lto-basic-block-address-map"
+  "-DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=lld -Wl,--lto-basic-block-address-map" )
+
+# Patch clang's CMakeLists.txt to apply DeduBB directives ONLY to the clang executable link
+sed -i "s|target_link_libraries(clang PRIVATE.*|target_link_libraries(clang PRIVATE \"-Wl,-mllvm,-dedubb-directives=${PATH_TO_PROFILES}/dedubb_directives.txt\")|" ${PATH_TO_LLVM_SOURCES}/llvm-project/clang/tools/driver/CMakeLists.txt
 
 PATH_TO_OPTIMIZED_DEDUBB_BUILD=${BASE_DIR}/optimized_dedubb_build
 mkdir -p ${PATH_TO_OPTIMIZED_DEDUBB_BUILD} && cd ${PATH_TO_OPTIMIZED_DEDUBB_BUILD}
@@ -83,10 +86,10 @@ ninja clang
 
 # 5. Measure Sizes
 printf "Baseline BBAddrMap Stats\n" > ${BASE_DIR}/Results/sizes_clang_dedup.txt
-ls -l ${PATH_TO_BBADDRMAP_CLANG_BUILD}/bin/clang-${CLANG_VERSION} | awk '{print $5}' >> ${BASE_DIR}/Results/sizes_clang_dedup.txt
+${PATH_TO_TRUNK_LLVM_INSTALL}/bin/llvm-size ${PATH_TO_BBADDRMAP_CLANG_BUILD}/bin/clang-${CLANG_VERSION} >> ${BASE_DIR}/Results/sizes_clang_dedup.txt
 
 printf "\nDeduBB Optimized Stats\n" >> ${BASE_DIR}/Results/sizes_clang_dedup.txt
-ls -l ${PATH_TO_OPTIMIZED_DEDUBB_BUILD}/bin/clang-${CLANG_VERSION} | awk '{print $5}' >> ${BASE_DIR}/Results/sizes_clang_dedup.txt
+${PATH_TO_TRUNK_LLVM_INSTALL}/bin/llvm-size ${PATH_TO_OPTIMIZED_DEDUBB_BUILD}/bin/clang-${CLANG_VERSION} >> ${BASE_DIR}/Results/sizes_clang_dedup.txt
 
 date > ${PATH_TO_ALL_RESULTS}/script_end_time.txt
 cat ${BASE_DIR}/Results/sizes_clang_dedup.txt
